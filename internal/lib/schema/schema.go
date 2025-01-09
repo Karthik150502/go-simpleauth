@@ -1,13 +1,13 @@
 package schema
 
 type UserSignUpSchema struct {
-	FullName string `json:"fullName"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	FullName string `json:"fullname" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 type UserSignInSchema struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 
 type UserJwtPayloadSchema struct {
@@ -16,4 +16,3 @@ type UserJwtPayloadSchema struct {
 	Role            string `json:"role"`
 	IsEmailVerified bool   `json:"isEmailVerified"`
 }
-

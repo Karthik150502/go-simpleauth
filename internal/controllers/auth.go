@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"simple_auth/internal/errorhandling"
 	"simple_auth/internal/lib"
@@ -20,9 +21,15 @@ func HandleSignup(w http.ResponseWriter, r *http.Request) {
 
 	// Read and decode the JSON body
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		// http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 		log.Error(err)
-		errorhandling.RequestErrorHandler(w, err)
+		errorhandling.RequestErrorHandler(w, "Input payload seems to be malformed, kindly check the input body.", http.StatusBadRequest)
+		return
+	}
+
+	validationErrors := lib.ValidateUserInput(user)
+	if validationErrors != nil {
+		log.Error(errors.New("validation Failed"))
+		errorhandling.ValidationErrorHandler(w, validationErrors)
 		return
 	}
 
@@ -35,9 +42,10 @@ func HandleSignup(w http.ResponseWriter, r *http.Request) {
 	var resultUser db.User
 	queryResult := pgDb.Where("email = ?", user.Email).First(&resultUser)
 	if queryResult.Error == nil {
-		response := types.MessageResponse{
+		response := types.ApiResponse[any]{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Email already exists, try another email.",
+			Payload:    nil,
 		}
 		json.NewEncoder(w).Encode(response)
 		return
@@ -55,21 +63,27 @@ func HandleSignup(w http.ResponseWriter, r *http.Request) {
 		errorhandling.InternalErrorHandler(w)
 		return
 	}
-	json.NewEncoder(w).Encode(types.MessageResponse{
+
+	json.NewEncoder(w).Encode(types.ApiResponse[any]{
 		StatusCode: http.StatusBadRequest,
 		Message:    "User has been signed up successfully.",
+		Payload:    nil,
 	})
-
 }
 func HandleSignin(w http.ResponseWriter, r *http.Request) {
-	// Validate the username and the password and return a JWT token to the user.
 
 	var user schema.UserSignInSchema
-
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		log.Error(r)
-		errorhandling.RequestErrorHandler(w, err)
+		errorhandling.RequestErrorHandler(w, "Input payload seems to be malformed, kindly check the input body.", http.StatusBadRequest)
+		return
+	}
+
+	validationErrors := lib.ValidateUserInput(user)
+	if validationErrors != nil {
+		log.Error(errors.New("validation Failed"))
+		errorhandling.ValidationErrorHandler(w, validationErrors)
 		return
 	}
 

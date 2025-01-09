@@ -20,7 +20,7 @@ type MessageResponse struct {
 	Message    string `json:"message"`
 }
 
-type ApiResponse[T SignUpResponse | SignInResponse] struct {
+type ApiResponse[T SignUpResponse | SignInResponse | any] struct {
 	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
 	Payload    *T     `json:"payload,omitempty"`
