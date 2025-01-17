@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"simple_auth/internal/controllers"
+	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/httprate"
 )
 
 func Authhandler(r chi.Router) {
@@ -16,5 +18,11 @@ func Authhandler(r chi.Router) {
 		})
 	})
 	r.Post("/signup", controllers.HandleSignup)
-	r.Post("/signin", controllers.HandleSignin)
+	r.Route("/signin", func (router chi.Router){
+		router.Use(httprate.Limit(4, time.Minute, httprate.WithKeyFuncs(
+			httprate.KeyByIP,
+			httprate.KeyByEndpoint,
+		)))
+		router.Post("/", controllers.HandleSignin)
+	})
 }

@@ -29,12 +29,12 @@ func GetDb() (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return db, nil
 }
 
 func migrate(db *gorm.DB) {
-	err := db.AutoMigrate(&User{}, &VerificationToken{})
+	err := db.AutoMigrate(&VerificationToken{}, &Session{}, &OauthToken{}, &User{})
 	if err != nil {
 		log.Fatalf("Failed to migrate: %v", err)
 	}
@@ -54,10 +54,11 @@ func InitGormDb() {
 }
 
 func InsertUser(db *gorm.DB) {
+	password := "Karthik@150502"
 	user := User{
 		FullName:      "Karthik J",
 		Email:         "karthikrdy150502@gmail.com",
-		Password:      "Karthik@150502",
+		Password:      &password,
 		EmailVerified: false,
 		Role:          "Admin",
 	}

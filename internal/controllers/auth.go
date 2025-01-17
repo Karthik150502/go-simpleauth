@@ -53,16 +53,19 @@ func HandleSignup(w http.ResponseWriter, r *http.Request) {
 
 	password := []byte(user.Password)
 	hashedPassword, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
-	pgDb.Create(&db.User{
-		Email:    user.Email,
-		Password: string(hashedPassword),
-		FullName: user.FullName,
-	})
+
 	if err != nil {
 		log.Error(err)
 		errorhandling.InternalErrorHandler(w)
 		return
 	}
+	hashedPwd := string(hashedPassword)
+	pgDb.Create(&db.User{
+		Email:    user.Email,
+		Password: &hashedPwd,
+		FullName: user.FullName,
+		// Role:     "Admin",
+	})
 
 	json.NewEncoder(w).Encode(types.ApiResponse[any]{
 		StatusCode: http.StatusBadRequest,
@@ -103,7 +106,7 @@ func HandleSignin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	compareErr := bcrypt.CompareHashAndPassword([]byte(resultUser.Password), []byte(user.Password))
+	compareErr := bcrypt.CompareHashAndPassword([]byte(*resultUser.Password), []byte(user.Password))
 	if compareErr != nil {
 		json.NewEncoder(w).Encode(types.MessageResponse{
 			StatusCode: http.StatusBadRequest,
@@ -118,11 +121,23 @@ func HandleSignin(w http.ResponseWriter, r *http.Request) {
 		Role:            resultUser.Role,
 		IsEmailVerified: resultUser.EmailVerified,
 	}
-	resfreshToken, resfreshTokenErr := lib.GenerateJWT(&jwtPayload, 7*24*time.Hour)
-	accessToken, accessTokenErr := lib.GenerateJWT(&jwtPayload, 10*time.Minute)
-	if resfreshTokenErr != nil || accessTokenErr != nil {
-		log.Error(resfreshTokenErr)
-		log.Error(accessTokenErr)
+	refreshToken := lib.GenerateJWT(&jwtPayload, 7*24*time.Hour)
+	accessToken := lib.GenerateJWT(&jwtPayload, 10*time.Minute)
+	if refreshToken.Error != nil || accessToken.Error != nil {
+		log.Error(refreshToken.Error)
+		log.Error(accessToken.Error)
+		errorhandling.InternalErrorHandler(w)
+		return
+	}
+
+	createQueryResult := pgDb.Create(&db.Session{
+		UserID:       resultUser.ID,
+		ExpiresAt:    *refreshToken.ExpiresAt,
+		RefreshToken: *refreshToken.Token,
+	})
+
+	if createQueryResult.Error != nil {
+		log.Error(createQueryResult.Error)
 		errorhandling.InternalErrorHandler(w)
 		return
 	}
@@ -130,7 +145,7 @@ func HandleSignin(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(types.UserSignInResponse{
 		StatusCode:   http.StatusOK,
 		Message:      "User signed in successfully",
-		AccessToken:  accessToken,
-		RefreshToken: resfreshToken,
+		AccessToken:  *accessToken.Token,
+		RefreshToken: *refreshToken.Token,
 	})
 }

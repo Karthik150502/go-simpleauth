@@ -15,18 +15,33 @@ func DecodeJwt(tokenString string) {
 
 }
 
-func GenerateJWT(user *schema.UserJwtPayloadSchema, expiresIn time.Duration) (string, error) {
+type JWTToken struct {
+	ExpiresAt *time.Time
+	Token     *string
+	Error     error
+}
+
+func GenerateJWT(user *schema.UserJwtPayloadSchema, expiresIn time.Duration) *JWTToken {
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
-	claims["exp"] = time.Now().Add(expiresIn).Unix()
+	expiresAt := time.Now().Add(expiresIn)
+	claims["exp"] = expiresAt.Unix()
 	claims["authorized"] = true
 	claims["user"] = user
 
 	tokenString, err := token.SignedString(sampleJwtSecretKey)
 	if err != nil {
-		return "", err
+		return &JWTToken{
+			Token:     nil,
+			ExpiresAt: nil,
+			Error:     err,
+		}
 	}
-	return tokenString, nil
+	return &JWTToken{
+		Token:     &tokenString,
+		ExpiresAt: &expiresAt,
+		Error:     err,
+	}
 }
 
 func ValidateUserInput(schema interface{}) map[string]string {
