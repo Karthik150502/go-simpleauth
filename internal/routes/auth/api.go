@@ -13,7 +13,7 @@ import (
 func Authhandler(r chi.Router) {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Println(("The auth middlware is in action."))
+			fmt.Println(("The auth middlware in action."))
 			next.ServeHTTP(w, r)
 		})
 	})
